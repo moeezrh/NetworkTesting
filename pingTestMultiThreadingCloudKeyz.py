@@ -105,7 +105,8 @@ def main():
      seconds = float(3600 * hours)
      threads = 12
 
-     #Always Rounding Up Segments (Divisions due to limitations on thread count)
+     # Calculating the amount of batches to complete the test in
+     # Always Rounding Up Segments (Divisions due to limitations on thread count)
      segments = float(devices/threads)
      if segments != float(int(devices/threads)):
           segments = int(segments)
@@ -113,20 +114,17 @@ def main():
      else:
           segments = int(segments)
 
-
      if int(segments) == 0:
           packets = int(seconds/1)
      else:
           packets = int(seconds/float(segments))
 
-
+     # Creates a nested list with the IP address of each device and the number of packets to send
      ip_packet = []
      for i in ip_addresses:
           ip_packet.append([i,packets])
 
-
-
-     # execute ping test on all ip addresses simultaneously (limited by thread count)
+     # execute ping test on all ip addresses simultaneously (limited by thread count) (starmap allows for multiple arguments to be passed)
      with Pool() as pool:
           pool.starmap(ping, ip_packet)
 
@@ -144,36 +142,37 @@ def main():
      with open(output_event_file, "a") as file:
           file.write("Event Log \n\n" + str(hours) + " Hour Test\n\nSTART TIME: " + start_time + "\n\n")
 
-     number_passed = 0
-     # Writs the normal output file
-     time_elapsed = ""
+     # Counter for devices that passed
+     devices_passed = 0
 
+     # Combines the individual files into one large file, and analyzing data to construct the summary and event files
      for each_file in os.listdir(temp_path):
+
+          # Opening each file as read and appending it to main data file
           each_file = os.path.join(temp_path, each_file)
           with open(each_file, "r") as source_file, open(output_data_file, "a") as destination_file:
                     output = source_file.read()
                     destination_file.write(output)
-               # IP Address
-     
+               
+          # Searching for IP Address within the text file
           ip_start = output.find("Pinging ")
           ip_end = output.find(" with 32 bytes of data")
           ip = output[ip_start + 8: ip_end]
 
-          # Pass or fail
-
+          # Checks for indicator of PASS OR FAIL (FAIL is when at least one packet is lost)
           pass_or_fail = output.find("RESULT IS FAIL")
           if pass_or_fail == -1:
                test = "PASS"
-               number_passed += 1
+               devices_passed += 1
           else:
                test = "FAIL"
 
+          # Searches for value that provides percentage packet loss within text file
           test_start = output.find("(")
           test_end = output.find("%")
-
           loss = output[test_start + 1: test_end + 6]
 
-          #CHECKs if it was ever disconnected, and changes message to FAIL (WAS DISCONNECTED)
+          # checks if it was ever disconnected, and changes message to FAIL (WAS DISCONNECTED) if it was
           unreachable = output.find("DISCONNECTED")
           if unreachable != -1:
                test += " (WAS DISCONNECTED)"
@@ -184,84 +183,21 @@ def main():
           event_end = output.find("END LOG")
           event = output[event_start: event_end]
 
-
+          # Writing to Summary File
           with open(output_summary_file, "a") as file:
                file.write(ip + "\t\t" + loss + "\t\t" + test + "\n")
 
+          # Writing to Event Log
           with open(output_event_file, "a") as file:
                file.write(ip + "\n" + event + "\n")
           
 
-     """ for output in outputs:
-          with open(outputFile, "a") as file:
-               file.write(output)
 
-          # Writes the summary file with pass or fail status, %loss, and IP
-          # start = output.find("Ping statistics")
-          # end = output.find("Average")
-          # outputSummary = output[start: (end+13)]
-          
-          # IP Address
-          ip_start = output.find("Pinging ")
-          ip_end = output.find(" with 32 bytes of data")
-          ip = output[ip_start + 8: ip_end]
-
-          # Pass or fail
-
-          pass_or_fail = output.find("RESULT IS FAIL")
-          if pass_or_fail == -1:
-               test = "PASS"
-               number_passed += 1
-          else:
-               test = "FAIL"
-
-
-          # Check if unreachable/interrupt
-
-          #interrupt = output.find("unreachable")
-          #if interrupt != -1:
-               #fail_time_start = output.find("time: ")
-               #fail_time_end = output.find("PST")
-               #test = "FAIL --- DEVICE WAS INTERRUPTED/DISCONNECTED AT " + output[fail_time_start + 5: fail_time_end]
-
-
-          test_start = output.find("(")
-          test_end = output.find("%")
-
-          # if output[test_start + 1: test_end] == "0":
-          #      test = "PASS"
-          #      number_passed += 1
-          # else:
-          #      test = "FAIL"
-          #      # for x in range(output.count("LINE"))
-          #      time_start = output.find("O")
-          #      time_end = output.find(" s")
-          #      time_elapsed += "\n" + ip + "\t" + output[time_start: time_end + 2]
-
-
-          loss = output[test_start + 1: test_end + 6]
-
-          #CHECKs if it was ever disconnected, and changes message to FAIL (WAS DISCONNECTED)
-          unreachable = output.find("DISCONNECTED")
-          if unreachable != -1:
-               test += " (WAS DISCONNECTED)"
-               loss = "N/A"
-
-          # Finding Event Log
-          event_start = output.find("EVENT LOG")
-          event_end = output.find("END LOG")
-          event = output[event_start: event_end]
-
-
-          with open(outputSummaryFile, "a") as file:
-               file.write(ip + "\t\t" + loss + "\t\t" + test + "\n")
-
-          with open(outputEventFile, "a") as file:
-               file.write(ip + "\n" + event + "\n") """
-
+     # Writes the number of devices that passed into summary file
      with open(output_summary_file, "a") as file:
-          file.write("\n" + str(number_passed) + " out of " + str(int(devices)) + " controllers PASSED\n\nEND TIME: " + end_time + "\n\n" + str(status_array))
+          file.write("\n" + str(devices_passed) + " out of " + str(int(devices)) + " devices PASSED\n\nEND TIME: " + end_time + "\n\n" + str(status_array))
 
+     # Writes the end time into event log
      with open(output_event_file, "a") as file:
           file.write("END TIME: " + end_time)
 
