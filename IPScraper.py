@@ -1,7 +1,4 @@
 import scapy.all as scapy
-import argparse
-
-
   
 def scan(ip):
     arp_req_frame = scapy.ARP(pdst = ip)
