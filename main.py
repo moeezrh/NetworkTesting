@@ -6,6 +6,8 @@ from IPScraper import scan, ip_results
 import os
 import sys
 import shutil
+import json
+
 
 def main():
 
@@ -21,6 +23,19 @@ def main():
      elif __file__:
           application_path = os.path.dirname(__file__)
 
+     #config file name
+     config_name = 'config.txt'
+
+     # Path for config file (which stores the path for the output folder and more...)
+     config_path = os.path.join(application_path, config_name)  
+
+     # Start working on using .json file as configuration file
+     #config = load_config(config_path)
+
+
+     # Reading the config file for the path to the output folder and storing to variable
+     config_file = open(config_path,"r+")
+     output_path_from_config = config_file.read()    
 
      # temp directory path (this directory will hold ping test results for each device tested in separate files)
      temp_path = os.path.join(application_path, "temp")
@@ -32,16 +47,6 @@ def main():
                     os.remove(item_path)  # Remove the file
                elif os.path.isdir(item_path):  # Check if it's a directory
                     shutil.rmtree(item_path)  # Remove the directory and its contents
-
-     #config file name
-     config_name = 'config.txt'
-
-     # Path for config file (which stores the path for the output folder and more...)
-     config_path = os.path.join(application_path, config_name)   
-
-     # Reading the config file for the path to the output folder and storing to variable
-     config_file = open(config_path,"r+")
-     output_path_from_config = config_file.read()    
 
      # Saving the path for output, summary, and event file
      output_data_file = output_path_from_config + "\\"
@@ -201,6 +206,16 @@ def main():
      
      print("Finished " + dt_print + "\n")
      input()
+
+
+def load_config(config_path):
+     with open(config_path, "r") as file:
+          config_data = json.load(file)
+     return config_data
+
+def save_config(config_path, config_data):
+     with open(config_path, "w") as file:
+          json.dump(config_data, file, indent=4)
 
 # Performs Ping Test on each IP Address
 def ping (host, packets):
